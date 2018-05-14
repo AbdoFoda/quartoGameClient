@@ -34,7 +34,7 @@ screen([X|T]):-
 
 bestMove(Pos, NextPos,C) :-
     
-minimax(Pos, NextPos, _,C).
+  minimax(Pos, NextPos, _,C).
 
 
 
@@ -112,13 +112,21 @@ write('-> Bad Move !'), nl,
 
 
 
+readPiece(List,Piece) :-
+    write('Enter a piece for me ?'), 
+    nl,screen(List),nl,
+    nl, read(Piece), nl, 
+    member(Piece, List),!.
 
+readPiece(List , Piece) :-
+  write('Please enter a valid piece :)'),
+  readPiece(List , Piece).
+    
 
 play([Player, play, Board], HumanPlayer,List) :-
-    write('Enter a piece for me ?'), 
-	
-	nl,screen(List),nl,
-  nl, read(Piece), nl, 
+    
+  
+  readPiece(List,Piece),
   write(Piece),nl,
   delete(List,Piece,List_computer),
   
