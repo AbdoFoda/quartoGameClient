@@ -32,9 +32,7 @@ screen([X|T]):-
 	write(X),nl,
 	screen(T).		
 
-bestMove(Pos, NextPos,C) :-
-    
-  minimax(Pos, NextPos, _,C).
+
 
 
 
@@ -46,70 +44,112 @@ play :-
   nl,
     write('===================='), 
   nl, 
-  nl,    
-write('Rem : you starts the game'),
-  nl,
-    playAskColor.
+  playAskDiff(Depth),
+  playAskColor(Depth).
+depth(easy,1).
+depth(medium,4).
+depth(hard,10).
 	
-	
+playAskDiff(Depth) :-
+    nl, write('select difficulty !'), nl,
+    write('1-easy') , nl ,
+    write('2-medium') , nl,
+    write('3-hard')  , nl,
+    
+    
+	  read(Diff), nl,
 
+	  (\+ depth(Diff,_),!,     
+	    write('Error : not a valid difficulty !'), nl, playAskDiff(Depth);
+	    depth(Diff,Depth)
+	  ). 
 
-playAskColor :-
+playAskColor(Depth) :-
 
 	  nl, write('Color for human player ? (you or computer)'), nl,
 
 	  read(Player), nl,
 
 	  (Player \= computer, Player \= you, !,     
-	    write('Error : not a valid color !'), nl, playAskColor                     
+	    write('Error : not a valid color !'), nl, playAskColor(Depth)                    
 	    ;
 	    EmptyBoard = [e, e, e, e, e, e, e, e, e],
 	    show(EmptyBoard), nl,
 	
 	    list(X),
-	    play([you, play, EmptyBoard], Player,X)
+	    play([you, play, EmptyBoard], Player,X,Depth)
 	  ).
 
-
-play([Player, play, Board], Player,List) :- 
-  !,
- nl, 
- 
- random_choice(List,Z),
- delete(List,Z,Newlist),
- 
-   write(Z),nl,
-  write('Next move ?'), 
-  nl, read(Pos), nl,
-% Ask human where to play
-    (
-      humanMove([Player, play, Board], [NextPlayer, State, NextBoard], Pos,Z), !,
-      show(NextBoard),
+play([Player, play, Board], Player,List,Depth) :- 
+    !,
+   nl, 
+   random_choice(List,Z),
+   delete(List,Z,Newlist),
+   
+    write(Z),nl,
+    write('Next move ?'), 
+    nl, read(Pos), nl,
+  % Ask human where to play
       (
-        State = win, !,                             
-% If Player win -> stop
-        nl, write('End of game : '),
-        write(Player), write(' win !'), nl, nl
-        ;
- State = draw, !,                            
-% If draw -> stop
-        nl, write('End of game : '),
-        write(' draw !'), nl, nl
-        ;
-	%	nl,screen(NewList),nl,
-	%	write('Enter a piece for me?'),nl,
-	%	read(Piece),nl,
-	%	delete(NewList,Piece,Secondlist),
-        play([NextPlayer, play, NextBoard], Player,Newlist) 
-% Else -> continue the game
-      )
- ;
-write('-> Bad Move !'), nl,                
-% If humanMove fail -> bad move
-      play([Player, play, Board], Player,NewList)        
-% Ask again
-    ).
+        humanMove([Player, play, Board], [NextPlayer, State, NextBoard], Pos,Z), !,
+        show(NextBoard),
+        (
+          State = win, !,                             
+  % If Player win -> stop
+          nl, write('End of game : '),
+         nl,
+         write('player win !'), nl, nl
+          ;
+   State = draw, !,                            
+  % If draw -> stop
+          nl, write('End of game : '),
+          write(' draw !'), nl, nl
+          ;
+    %	nl,screen(NewList),nl,
+    %	write('Enter a piece for me?'),nl,
+    %	read(Piece),nl,
+    %	delete(NewList,Piece,Secondlist),
+          play([NextPlayer, play, NextBoard], Player,Newlist,Depth) 
+  % Else -> continue the game
+        )
+   ;
+  write('-> Bad Move !'), nl,                
+  % If humanMove fail -> bad move
+        play([Player, play, Board], Player,_,Depth)        
+  % Ask again
+      ).
+  
+  
+  
 
+
+play([Player, play, Board], HumanPlayer,List,Depth) :-
+      
+    readPiece(List,Piece),
+    write(Piece),nl,
+    delete(List,Piece,List_computer),
+    
+    nl, write('computer play : '), nl, nl,
+    
+  
+      bestMove([Player, play, Board], [NextPlayer, State, BestSuccBoard],Piece,Depth),
+      write('computer choosed!') , nl,
+      show(BestSuccBoard),
+      (
+        State = win, !,                                 
+  % If Player win -> stop
+        nl, write('End of game : '), nl,
+        write('computer win !'), nl, nl
+        ;
+        State = draw, !,                                
+  % If draw -> stop
+        nl, write('End of game : '), write(' draw !'), nl, nl
+        ;
+        
+  % Else -> continue the game
+        play([NextPlayer, play, BestSuccBoard], HumanPlayer,List_computer,Depth)
+      ).
+  
 
 
 readPiece(List,Piece) :-
@@ -123,36 +163,8 @@ readPiece(List , Piece) :-
   readPiece(List , Piece).
     
 
-play([Player, play, Board], HumanPlayer,List) :-
-    
-  
-  readPiece(List,Piece),
-  write(Piece),nl,
-  delete(List,Piece,List_computer),
-  
-  nl, write('computer play : '), nl, nl,
-  
-
-    bestMove([Player, play, Board], [NextPlayer, State, BestSuccBoard],Piece),
-    show(BestSuccBoard),
-    (
-      State = win, !,                                 
-% If Player win -> stop
-      nl, write('End of game : '),
-      write(Player), write(' win !'), nl, nl
-      ;
-      State = draw, !,                                
-% If draw -> stop
-      nl, write('End of game : '), write(' draw !'), nl, nl
-      ;
-      
-% Else -> continue the game
-      play([NextPlayer, play, BestSuccBoard], HumanPlayer,List_computer)
-    ).
 
 
-nextPlayer(computer,you).
-nextPlayer(you,computer).
 
 
 
@@ -215,23 +227,30 @@ show2(X) :-
 
 
 
+bestMove(Pos, NextPos,Piece,Depth) :-
+    
+  minimax(Pos, NextPos, _,Piece , Depth).
+
 % :- module(minimax, [minimax/4]).
 
+minimax(Pos, Pos, Val,_, 0) :-
+    utility(Pos, Val) , ! .                                         % stop recursion here
 
-minimax(Pos, BestNextPos, Val,C) :-                     % Pos has successors
-    bagof(NextPos, move(Pos, NextPos,C), NextPosList),
-    best(NextPosList, BestNextPos, Val,C), !.
+minimax(Pos, BestNextPos, Val,Piece , Depth) :-                     % Pos has successors
+    bagof(NextPos, move(Pos, NextPos,Piece), NextPosList),
+    NextDepth is Depth - 1 ,
+    best(NextPosList, BestNextPos, Val,Piece ,NextDepth), !.
 
-minimax(Pos, _, Val,C) :-                     % Pos has no successors
+minimax(Pos, Pos, Val,_ ,_) :-                     % Pos has no successors
     utility(Pos, Val).
 
 
-best([Pos], Pos, Val,C) :-
-    minimax(Pos, _, Val,C), !.
+best([Pos], Pos, Val,Piece ,Depth) :-
+    minimax(Pos, _, Val,Piece , Depth), !.
 
-best([Pos1 | PosList], BestPos, BestVal,C) :-
-    minimax(Pos1, _, Val1,C),
-    best(PosList, Pos2, Val2,C),
+best([Pos1 | PosList], BestPos, BestVal,Piece , Depth) :-
+    minimax(Pos1, _, Val1,Piece , Depth),
+    best(PosList, Pos2, Val2,Piece , Depth),
     betterOf(Pos1, Val1, Pos2, Val2, BestPos, BestVal).
 
 
@@ -251,34 +270,34 @@ betterOf(_, _, Pos1, Val1, Pos1, Val1).        % Otherwise Pos1 better than Pos0
 % :- module(quarto, [move/3,min_to_move/1,max_to_move/1,utility/2,winPos/1,drawPos/1]).
 
 
-
-
-move([X1, play, Board],[X2, win, NextBoard],C) :-
-
- nextPlayer(X1, X2),
-
- move_aux(C, Board, NextBoard),
-    
- winPos(NextBoard), !.
-
 nextPlayer(you,computer).
 nextPlayer(computer,you).
 
 
-move([X1, play, Board],[X2, draw, NextBoard],C) :-
+move([X1, play, Board],[X2, win, NextBoard],Piece) :-
 
  nextPlayer(X1, X2),
 
- move_aux(C, Board, NextBoard),
+ move_aux(Piece, Board, NextBoard),
+    
+ winPos(NextBoard), !.
+
+
+
+move([X1, play, Board],[X2, draw, NextBoard],Piece) :-
+
+ nextPlayer(X1, X2),
+
+ move_aux(Piece, Board, NextBoard),
     
  drawPos(NextBoard),!.
 
 
 
-move([X1, play, Board], [X2, play, NextBoard],C) :-
+move([X1, play, Board], [X2, play, NextBoard],Piece) :-
  nextPlayer(X1, X2),
     
- move_aux(C, Board, NextBoard).
+ move_aux(Piece, Board, NextBoard).
 
 
 move_aux(P, [e|Bs], [P|Bs]).
@@ -300,11 +319,13 @@ max_to_move([computer, _, _]).
 
 
 
-utility([computer, win, _], 1).       
+utility([computer, win, _], 1).      
 
 utility([you, win, _], -1).      
 
-utility([_, draw, _], 0).
+utility([_, draw,  _], 0).
+
+utility([_, play, _],0). % undetermine state!
 
 
 
